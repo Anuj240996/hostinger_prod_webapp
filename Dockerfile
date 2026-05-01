@@ -28,6 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libzbar0 \
     libcairo2-dev \
     pkg-config \
+    libfreetype6-dev \
+    libjpeg-dev \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
