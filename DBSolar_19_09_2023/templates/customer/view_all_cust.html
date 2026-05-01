@@ -1,0 +1,423 @@
+{% extends 'partials/base.html' %}
+{% block title %}Order Page{% endblock %}
+{% load static %}
+{% load group_filters %}
+{% block content %}
+<style>
+    html,
+    body {
+        min-height: 50%;
+    }
+
+    body,
+    div,
+    form,
+    input,
+    select,
+    textarea,
+    label,
+    p {
+        padding: 0;
+        margin: 0;
+        outline: none;
+        font-family: Roboto, Arial, sans-serif;
+        font-size: 14px;
+        color: #666;
+        line-height: 22px;
+    }
+
+    .testbox {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: inherit;
+        padding: 20px;
+    }
+
+    form {
+        width: 100%;
+        padding: 10px;
+        border-radius: 1px;
+        background: #fff;
+        box-shadow: 0 0 0;
+    }
+
+    input,
+    select,
+    textarea {
+        margin-bottom: 5px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+    }
+
+    input {
+        width: calc(100% - 10px);
+        padding: 5px;
+    }
+
+    input[type="date"] {
+        padding: 4px 5px;
+    }
+
+    .item:hover p,
+    .item:hover i,
+    .question:hover p,
+    .question label:hover,
+    input:hover::placeholder {
+        color: #fff;
+    }
+
+    .item input:hover,
+    .item select:hover,
+    .item textarea:hover {
+        border: 1px solid transparent;
+        box-shadow: 0 0 3px 0 #669999;
+        color: #000;
+    }
+
+    .item {
+        position: relative;
+        margin: 0 0;
+    }
+
+    .colums {
+        display: flex;
+        justify-content: space-between;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .colums div {
+        width: 42%;
+    }
+
+    .btn-block {
+        margin-top: 20px;
+    }
+
+    button {
+        margin-top: 18px;
+        width: 150px;
+        height: 50px;
+        padding: 8px;
+        border: none;
+        border-radius: 5px;
+        background: #669999;
+        font-size: 16px;
+        color: #fff;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #fff;
+        box-shadow: 0 2px 9px 0 rgba(0, 0, 0, .25), 0 3px 5px 13px rgba(0, 0, 0, 0.02);
+    }
+
+    .btn:hover p,
+    .btn:hover i,
+    .question:hover p,
+    .question label:hover {
+        color: green;
+    }
+
+    /* Consumer/Firm Name: primary column — wider; other text columns wrapped */
+    #yourDataTable .col-consumer-name {
+        white-space: normal !important;
+        width: 300px !important;
+        max-width: 380px !important;
+        min-width: 220px !important;
+        word-break: break-word;
+        line-height: 1.25;
+    }
+    #yourDataTable .col-address,
+    #yourDataTable .col-username,
+    #yourDataTable .col-email {
+        white-space: normal !important;
+        width: 160px !important;
+        max-width: 160px !important;
+        min-width: 120px !important;
+        word-break: break-word;
+        line-height: 1.25;
+    }
+    #yourDataTable .col-username,
+    #yourDataTable .col-email {
+        width: 140px !important;
+        max-width: 140px !important;
+        min-width: 100px !important;
+    }
+    #yourDataTable .col-consumer-name a {
+        white-space: normal !important;
+    }
+    /* Single-table layout; horizontal scroll when needed */
+    /* Toolbar stays fixed; only .dt-table-scroll-x scrolls horizontally (see script.js) */
+    .dt-consumer-list-wrap {
+        width: 100%;
+        overflow-x: visible !important;
+    }
+    .dt-consumer-list-wrap .dataTables_wrapper {
+        width: 100%;
+    }
+    .dt-consumer-list-wrap .dt-table-scroll-x {
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: visible;
+        -webkit-overflow-scrolling: touch;
+    }
+    /*
+      Avoid stretched columns: default 100%-wide tables distribute empty space.
+      Use content-based width so columns stay only as wide as needed.
+    */
+    .dt-consumer-list-wrap table.dataTable#yourDataTable {
+        width: max-content !important;
+        table-layout: auto !important;
+    }
+    .dt-consumer-list-wrap .card-table .table thead th,
+    .dt-consumer-list-wrap .card-table .table tbody td {
+        padding: 0.45rem 0.5rem !important;
+        text-align: left !important;
+        vertical-align: middle !important;
+    }
+    .dt-consumer-list-wrap .card-table .card-body .table tr td:first-child,
+    .dt-consumer-list-wrap .card-table .card-body .table tr th:first-child {
+        padding-left: 0.5rem !important;
+    }
+    .dt-consumer-list-wrap .card-table .card-body .table tr td:last-child,
+    .dt-consumer-list-wrap .card-table .card-body .table tr th:last-child {
+        padding-right: 0.5rem !important;
+    }
+    /* Short columns: single line, tight (override global card-table nowrap where not needed for wrap cols) */
+    .dt-consumer-list-wrap #yourDataTable thead th:not(.col-consumer-name):not(.col-address):not(.col-email):not(.col-username),
+    .dt-consumer-list-wrap #yourDataTable tbody td:not(.col-consumer-name):not(.col-address):not(.col-email):not(.col-username) {
+        white-space: nowrap !important;
+    }
+</style>
+<!-- Datatable toolbar styling is global from static/assets/css/style.css -->
+<div class="wrapper">
+    <div class="content container-fluid">
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="page-title">Consumer List</h3>
+                    <ul class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard-index' %}"><i class="fa fa-home" aria-hidden="true"></i> Home</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'customer-view_all' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Consumer List</li>
+                    </ul>
+                </div>
+                <div class="col-auto text-right float-right ml-auto">
+                    <div class="dt-buttons btn-group flex-wrap mb-2 mb-md-0 mr-md-2 d-inline-flex align-items-center justify-content-end">
+                        <a href="#" class="btn btn-primary" onclick="consumerListGeneratePDF(); return false;" title="PDF"><i class="fas fa-file-pdf" style="font-size: 1.05rem;"></i></a>
+                        <a href="#" class="btn btn-primary" onclick="consumerListGenerateExcel(); return false;" title="Excel"><i class="fas fa-file-excel" style="font-size: 1.05rem;"></i></a>
+                        <a href="#" class="btn btn-primary" onclick="consumerListCopyToClipboard(); return false;" title="Copy"><i class="fas fa-copy"></i></a>
+                        <a href="#" class="btn btn-primary" onclick="consumerListPrintTable(); return false;" title="Print"><i class="fas fa-print"></i></a>
+                    
+                    <a href="{% url 'customer-cust' %}" class="btn btn-primary" title="Create new customer / consumer">
+                        <i class="fas fa-plus mr-1"></i> 
+                    </a>
+                </div>
+
+            </div>
+        </div>
+        <div class="card card-primary">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-12">
+
+                        <label for="dateFilter">Date Filter:</label>
+                        <select class="form-control" id="dateFilter" onchange="applyDateFilter()">
+                            <option value=""> {{ caption_text1 }}</option>
+                            <option value=""> </option>
+                            <option value="Today">Today</option>
+                            <option value="Last7Days">Last 7 Days</option>
+                            <option value="Last30Days">Last 30 Days</option>
+                            <option value="ThisMonth">This Month</option>
+                            <option value="All">Up To Date</option>
+                            <option value="Custom">Custom Range</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-1" id="customDateRange" style="display: none;">
+                    <div class="form-group col-md-5" style="display: inline-block; margin-right: 10px;">
+                        <label for="startDate">Start Date:</label>
+                        <input type="date" class="form-control" id="startDate">
+                    </div>
+                    <div class="form-group col-md-5" style="display: inline-block; margin-right: 10px;">
+                        <label for="endDate">End Date:</label>
+                        <input type="date" class="form-control" id="endDate">
+                    </div>
+                    <button class="btn btn-primary" onclick="applyCustomRange()" style="display: inline-block;">Apply</button>
+                </div>
+
+                <script>
+                    function applyDateFilter() {
+                        var selectedOption = document.getElementById("dateFilter").value;
+                        if (selectedOption === "Custom") {
+                            document.getElementById("customDateRange").style.display = "block";
+                        } else {
+                            // Redirect to the URL with the selected filter option
+                            window.location.href = "{% url 'customer-view_all_cust' %}?filter=" + selectedOption;
+                        }
+                    }
+
+                    function applyCustomRange() {
+                        var startDate = document.getElementById("startDate").value;
+                        var endDate = document.getElementById("endDate").value;
+                        // Redirect to the URL with the custom date range
+                        window.location.href = "{% url 'customer-view_all_cust' %}?filter=Custom&start_date=" + startDate + "&end_date=" + endDate;
+                    }
+                </script>
+                <!--&lt;!&ndash;  <p><h3 style="text-align: center; color: red;">* {{ caption_text }} *</h3><h3 style="color: blue;">{{ start_date|date:"d-m-Y" }} to {{ end_date|date:"d-m-Y" }}</h3></p>&ndash;&gt;-->
+                <h3 style="text-align: center; color: red;">* {{ caption_text }} *</h3>
+
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="card card-table">
+                            <div class="card-body">
+                                <!--                           <div class="table-responsive">-->
+
+
+
+                                {% if emps %}
+
+                                <!--                               <h4 align="center">Result against "<span style="color: red">{{name}}</span>" keyword </h4>-->
+                                <div class="dt-consumer-list-wrap">
+                                <table id="yourDataTable" class="table table-hover table-center table.dataTable.table-sm mb-0 datatable table.sm dt-compact-cols dt-tools-minimal">
+                                    
+
+                                    <thead class="table-success">
+                                        <tr>
+                                            <th scope="col">Sr No.</th>
+                                            <th scope="col">Cust id</th>
+                                            <th scope="col">Project Status</th>
+                                            <th scope="col" class="col-username">Username</th>
+                                            <th scope="col" class="col-consumer-name col-primary-name-field">Consumer / Firm Name</th>
+                                            <th scope="col">Capacity</th>
+<!--                                            <th scope="col">UPS Soft</th>-->
+                                            <th scope="col">Consumer Type</th>
+                                            <th scope="col">Mobile</th>
+                                            <th scope="col">Project Type</th>
+    
+                                            <th scope="col" class="col-email">Email</th>
+                                            <th scope="col" class="col-address">Address</th>
+                                            <th scope="col">City</th>
+                                            <th scope="col">State</th>
+                                            <th scope="col">Pincode</th>
+                                            <th scope="col">Consumer Number</th>
+                                            <th scope="col">Assign Engineer</th>
+
+                                            {% if user.is_authenticated and user|user_in_group:"Cust_user" %}
+                                            <th class="text-center">Action</th>
+                                            {% endif %}
+                                            <th scope="col">MSEB Status</th>
+
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        {% for Cust in emps %}
+                                        <tr>
+                                            <td>{{forloop.counter}}</td>
+                                            <td>{{Cust.Cust_id}}</td>
+                                            <td>
+                                                {% if Cust.project_status %}
+                                                 {% if Cust.project_status == 'Completed' %}
+                                                   <a href="{% url 'customer-customer-updatepage' Cust.Cust_id %}" class="text-capitalize"><img src="{% static 'images/check 5.gif' %}" style="width: 25px;"><b style="color: green"> Completed</b></a>
+                                                 {% else %}
+                                                   <a href="{% url 'customer-customer-updatepage' Cust.Cust_id %}" class="text-capitalize"><img src="{% static 'images/pending1.gif' %}" alt="Pending" style="width: 25px;"><b style="color: orange"> Pending</b></a>
+                                                 {% endif %}
+                                                {% else %}
+                                                  <span class="badge badge-danger">Pending</span>
+                                                {% endif %}
+                                            </td>
+
+                                            <td class="col-username">{{Cust.new_customer.username}}</td>
+                                            {% if Cust.Comp_name %}
+                                            <td class="text-capitalize col-consumer-name col-primary-name-field">
+                                                <a href="{% url 'customer-customer-updatepage' Cust.Cust_id %}" class="text-capitalize">{{Cust.Comp_name}} , &nbsp;{{Cust.City}}</a>
+                                            </td>
+                                            {% else %}
+                                            <td class="text-capitalize col-consumer-name col-primary-name-field">
+                                                <a href="{% url 'customer-customer-updatepage' Cust.Cust_id %}" class="text-capitalize">{{Cust.first_name}} {{Cust.last_name}} , &nbsp;{{Cust.City}}</a>
+                                            </td>
+                                            {% endif %}
+                                            <td>{{Cust.Plant_Capacity}} Kwp</td>
+<!--                                            <td class="text-capitalize">{{Cust.Ups_Soft}}</td>-->
+                                            <td class="text-capitalize">{{Cust.Cust_type}}</td>
+                                            <td>{{Cust.phone}}</td>
+                                            <td class="text-capitalize">{{Cust.project_type}}</td>
+                                            
+                                            <td class="col-email">{{Cust.new_customer.email}}</td>
+                                            <td class="text-capitalize col-address">{{Cust.Address|default:"-"}}</td>
+                                            <td class="text-capitalize">{{Cust.City|default:"-"}}</td>
+                                            <td class="text-capitalize">{{Cust.state|default:"-"}}</td>
+                                            <td>{{Cust.Pincode|default:"-"}}</td>
+                                            <td>{{Cust.Consumer|default:"-"}}</td>
+                                            <td>{% if Cust.Engg_Assign %}{{Cust.Engg_Assign.username}}{% else %}-{% endif %}</td>
+                                            <!--                                   <td class="text-right">-->
+
+                                            {% if user.is_authenticated and user|user_in_group:"Cust_user" %}
+                                            <td class="text-left">
+                                                <div class="actions text-center">
+                                                    <a href="{% url 'customer-customer-update' Cust.Cust_id %}" class="btn btn-sm bg-success-light mr-2">
+                                                        <i class="fas fa-pen"></i>
+                                                    </a>
+                                                    <!--                                             <a href="#" class="btn btn-sm bg-danger-light">-->
+                                                    <!--                                             <i class="fas fa-trash"></i>-->
+                                                    <!--                                             </a>-->
+                                                </div>
+                                            </td>
+
+
+                                            {% endif %}
+                                            <td>
+                                                {% if Cust.mseb_data.exists %}
+                                                    {% with mseb_record=Cust.mseb_data.first %}
+                                                        {% if mseb_record.installation_date %}
+                                                            <a href="{% url 'customer-MSEB' %}?cust_id={{ Cust.Cust_id }}"><span class="badge badge-success">Complete</span></a>
+                                                        {% else %}
+                                                            <a href="{% url 'customer-MSEB' %}?cust_id={{ Cust.Cust_id }}"><span class="badge badge-warning">Pending</span></a>
+                                                        {% endif %}
+
+                                                    {% endwith %}
+                                                {% else %}
+                                                    {% if user.is_superuser %}
+                                                       <a href="{% url 'customer-MSEB' %}"><span class="badge badge-info">Upcoming</span></a>
+                                                    {% else %}
+                                                       <a href="#"><span class="badge badge-info">Upcoming</span></a>
+                                                    {% endif %}
+
+
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+
+                                </table>
+                                </div>
+                                {% endif %}
+                                <!--                           </div>-->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>window.LIST_PAGE_EXPORT_LOGO_PATH = "{% static 'images/db_logo_200.png' %}";</script>
+<script src="{% static 'js/list_page_export.js' %}"></script>
+<script>
+    ListPageExport.register({
+        apiPrefix: 'consumerList',
+        pdfFilename: 'consumer_list.pdf',
+        excelFilename: 'consumer_list.xlsx',
+        excelSheetName: 'ConsumerList',
+        printDocumentTitle: 'Consumer List',
+        pdfCaption: 'Consumer List',
+        pdfMergeNamePhoneColumns: true
+    });
+</script>
+
+{% endblock %}

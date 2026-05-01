@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Site Surveys - Solar CRM{% endblock %}
+
+{% block content %}
+<div class="surveys-page">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Site Surveys</h2>
+        <a href="{% url 'survey_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Schedule New Survey
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All</option>
+                        <option value="scheduled" {% if request.GET.status == 'scheduled' %}selected{% endif %}>Scheduled</option>
+                        <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Engineer</label>
+                    <select name="engineer" class="form-select">
+                        <option value="">All</option>
+                        {% for engineer in engineers %}
+                        <option value="{{ engineer.id }}" {% if request.GET.engineer == engineer.id|stringformat:"s" %}selected{% endif %}>{{ engineer.get_full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">From Date</label>
+                    <input type="date" name="from_date" class="form-control" value="{{ request.GET.from_date }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">To Date</label>
+                    <input type="date" name="to_date" class="form-control" value="{{ request.GET.to_date }}">
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                    <a href="{% url 'survey_list' %}" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Survey List -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Lead Name</th>
+                            <th>Engineer</th>
+                            <th>Scheduled Date</th>
+                            <th>Feasibility</th>
+                            <th>System Size</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for survey in surveys %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'lead_detail' survey.lead.id %}" class="text-decoration-none">
+                                    <strong>{{ survey.lead.name }}</strong>
+                                </a>
+                                <br>
+                                <small class="text-muted">{{ survey.lead.phone }}</small>
+                            </td>
+                            <td>{{ survey.engineer.get_full_name|default:'Not Assigned' }}</td>
+                            <td>
+                                {{ survey.scheduled_date|date:'d M Y, h:i A' }}
+                                {% if survey.is_today %}
+                                <span class="badge bg-warning">Today</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if survey.feasibility == 'high' %}
+                                <span class="badge bg-success">High</span>
+                                {% elif survey.feasibility == 'medium' %}
+                                <span class="badge bg-warning">Medium</span>
+                                {% elif survey.feasibility == 'low' %}
+                                <span class="badge bg-danger">Low</span>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>{{ survey.recommended_size|default:'-' }} kW</td>
+                            <td>
+                                {% if survey.status == 'completed' %}
+                                <span class="badge bg-success">Completed</span>
+                                {% elif survey.status == 'scheduled' %}
+                                <span class="badge bg-primary">Scheduled</span>
+                                {% elif survey.status == 'cancelled' %}
+                                <span class="badge bg-danger">Cancelled</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'survey_detail' survey.id %}" class="btn btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'survey_edit' survey.id %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if survey.status == 'completed' %}
+
+                                    <a href="{% url 'quotation_create' %}?survey={{ survey.id }}" class="btn btn-outline-success btn-sm" title="Generate Quotation">
+                                        <i class="fas fa-file-invoice"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+<!--                            <td>-->
+<!--                                <div class="btn-group btn-group-sm">-->
+<!--                                    <a href="{% url 'survey_detail' survey.id %}" class="btn btn-outline-primary">-->
+<!--                                        <i class="fas fa-eye"></i>-->
+<!--                                    </a>-->
+<!--                                    <a href="{% url 'survey_edit' survey.id %}" class="btn btn-outline-secondary">-->
+<!--                                        <i class="fas fa-edit"></i>-->
+<!--                                    </a>-->
+<!--                                    {% if survey.status == 'completed' and not survey.has_quotation %}-->
+<!--                                    <a href="{% url 'quotation_create' %}?survey={{ survey.id }}" class="btn btn-outline-success">-->
+<!--                                        <i class="fas fa-file-invoice"></i>-->
+<!--                                    </a>-->
+<!--                                    {% endif %}-->
+<!--                                </div>-->
+<!--                            </td>-->
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5">
+                                <i class="fas fa-hard-hat fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No surveys found</p>
+                                <a href="{% url 'survey_create' %}" class="btn btn-primary btn-sm">
+                                    Schedule First Survey
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

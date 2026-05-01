@@ -1,0 +1,266 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load humanize indian_numbers %}
+
+
+{% block title %}Leads - Solar CRM{% endblock %}
+
+{% block content %}
+<style>
+    .card-title {
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .card-subtitle {
+        font-size: 12px;
+        color: #6c757d;
+    }
+</style>
+<div class="leads-page">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Leads Management</h2>
+        <a href="/new-lead/leads/create/" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add New Lead
+        </a>
+    </div>
+    
+    <div class="row">
+        <!-- Left Panel - Filters -->
+        <div class="col-md-3">
+            <div class="card filter-panel">
+                <div class="card-header">
+                    <h5 class="mb-0">Filters</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" id="filter-form">
+                        <!-- Date Range -->
+                        <div class="mb-3">
+                            <label class="form-label">Date Range</label>
+                            <select name="date_range" class="form-select" onchange="this.form.submit()">
+                                <option value="">All Time</option>
+                                <option value="today" {% if request.GET.date_range == 'today' %}selected{% endif %}>Today</option>
+                                <option value="yesterday" {% if request.GET.date_range == 'yesterday' %}selected{% endif %}>Yesterday</option>
+                                <option value="this_week" {% if request.GET.date_range == 'this_week' %}selected{% endif %}>This Week</option>
+                                <option value="this_month" {% if request.GET.date_range == 'this_month' %}selected{% endif %}>This Month</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Sales Person -->
+                        <div class="mb-3">
+                            <label class="form-label">Sales Person</label>
+                            <select name="assigned_to" class="form-select" onchange="this.form.submit()">
+                                <option value="">All</option>
+                                {% for user in sales_users %}
+                                <option value="{{ user.id }}" {% if request.GET.assigned_to|stringformat:"s" == user.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ user.get_full_name|default:user.username }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Lead Source -->
+                        <div class="mb-3">
+                            <label class="form-label">Lead Source</label>
+                            <select name="source" class="form-select" onchange="this.form.submit()">
+                                <option value="">All</option>
+                                {% for source in lead_sources %}
+                                <option value="{{ source.id }}" {% if request.GET.source|stringformat:"s" == source.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ source.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Stage -->
+                        <div class="mb-3">
+                            <label class="form-label">Stage</label>
+                            <select name="stage" class="form-select" onchange="this.form.submit()">
+                                <option value="">All</option>
+                                {% for stage_value, stage_label in stage_choices %}
+                                <option value="{{ stage_value }}" {% if request.GET.stage == stage_value %}selected{% endif %}>
+                                    {{ stage_label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Area/City -->
+                        <div class="mb-3">
+                            <label class="form-label">City/Area</label>
+                            <input type="text" name="city" class="form-control" value="{{ request.GET.city }}" placeholder="Enter city">
+                        </div>
+                        
+                        <!-- Score -->
+                        <div class="mb-3">
+                            <label class="form-label">Lead Score</label>
+                            <select name="score" class="form-select" onchange="this.form.submit()">
+                                <option value="">All</option>
+                                <option value="high" {% if request.GET.score == 'high' %}selected{% endif %}>High</option>
+                                <option value="medium" {% if request.GET.score == 'medium' %}selected{% endif %}>Medium</option>
+                                <option value="low" {% if request.GET.score == 'low' %}selected{% endif %}>Low</option>
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Apply Filters</button>
+                            <a href="{% url 'lead_list' %}" class="btn btn-outline-secondary">Clear Filters</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Panel - Lead List -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Leads ({{ page_obj.paginator.count }} total)</h5>
+                        <div class="btn-group">
+                            <a href="/new-lead/leads/export/?{{ request.GET.urlencode }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-download me-1"></i>Export
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th colspan="3">Name</th>
+<!--                                    <th>Phone</th>-->
+                                    <th>Location</th>
+                                    <th>Electricity Bill</th>
+                                    <th>Property Type</th>
+                                    <th>Score</th>
+                                    <th>Stage</th>
+                                    <th>Assigned To</th>
+                                    <th>Next Follow-up</th>
+                                    <th>Created Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lead in leads %}
+                                <tr class="clickable-row" data-href="/new-lead/leads/{{ lead.id }}/">
+<!--                                    <td colspan="3">-->
+<!--                                        <strong>{{ lead.name }}<br><small>{{ lead.phone }}</small></strong>-->
+<!--                                    </td>-->
+                                    <td colspan="3">
+     <div class="card-title">{{ lead.name }}</div>
+                            <div class="card-subtitle">{{ lead.phone }}</div>
+</td>
+<!--                                    <td>{{ lead.phone }}</td>-->
+                                    <td>{{ lead.city }}</td>
+                                    <td>{{ lead.electricity_bill|default:'-'|indian_currency }}</td>
+                                    <td>{{ lead.get_property_type_display }}</td>
+                                    <td>
+                                        <span class="badge score-{{ lead.score }}">
+                                            {{ lead.get_score_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge stage-{{ lead.stage }}">
+                                            {{ lead.get_stage_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ lead.assigned_to.get_full_name|default:'Unassigned' }}</td>
+                                    <td>
+                                        {% if lead.next_followup %}
+                                        <small>{{ lead.next_followup|date:'d M Y' }}</small>
+                                        {% if lead.next_followup < now %}
+                                        <span class="badge bg-danger">Overdue</span>
+                                        {% endif %}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ lead.created|date:'d M Y' }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="/new-lead/leads/{{ lead.id }}/" class="btn btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="/new-lead/leads/{{ lead.id }}/edit/" class="btn btn-outline-secondary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="11" class="text-center py-4">
+                                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No leads found</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Pagination -->
+                {% if page_obj.paginator.num_pages > 1 %}
+                <div class="card-footer">
+                    <nav>
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                    <i class="fas fa-angle-left"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                    <i class="fas fa-angle-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Make table rows clickable
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (!e.target.closest('.btn-group')) {
+                window.location = this.dataset.href;
+            }
+        });
+    });
+</script>
+{% endblock %}

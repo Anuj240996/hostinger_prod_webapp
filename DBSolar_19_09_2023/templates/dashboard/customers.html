@@ -1,0 +1,437 @@
+{% extends 'partials/base.html' %}
+{% block title %}Order Page{% endblock %}
+{% load static %}
+{% load group_filters %}
+{% block content %}
+<style>
+    /* Add this style to customize checkbox size */
+    .toggle-status {
+        transform: scale(2.5);  /* Adjust the scale factor as needed */
+    }
+
+    /* Your existing styles */
+    html, body {
+        min-height: 100%;
+    }
+
+    /* Add this style for customizing checkbox colors */
+    .toggle-status:checked {
+        border-color: green;
+        background-color: #28a745;
+    }
+
+    .toggle-status.unchecked {
+        border-color: #dc3545;
+        background-color: #dc3545;
+    }
+
+    /* Full Name is the primary identity column — give it more horizontal space */
+    #yourDataTable .col-emp-full-name.col-primary-name-field {
+        min-width: 240px;
+        max-width: 420px;
+        white-space: normal !important;
+        word-break: break-word;
+        line-height: 1.25;
+    }
+</style>
+
+<style>
+   html, body {
+   min-height: 50%;
+   }
+   body, div, form, input, select, textarea, label, p {
+   padding: 0;
+   margin: 0;
+   outline: none;
+   font-family: Roboto, Arial, sans-serif;
+   font-size: 14px;
+   color: #666;
+   line-height: 22px;
+   }
+   .testbox {
+   display: flex;
+   justify-content: center;
+   align-items: center;
+   height: inherit;
+   padding: 20px;
+   }
+   form {
+   width: 100%;
+   padding: 10px;
+   border-radius: 1px;
+   background: #fff;
+   box-shadow: 0 0 0;
+   }
+   .input, select, textarea {
+   margin-bottom: 5px;
+   border: 1px solid #ccc;
+   border-radius: 3px;
+   }
+   input {
+   width: calc(100% - 10px);
+   padding: 5px;
+   }
+   input[type="date"] {
+   padding: 4px 5px;
+   }
+   .item:hover p, .item:hover i, .question:hover p, .question label:hover, input:hover::placeholder {
+   color:  #fff;
+   }
+   .item input:hover, .item select:hover, .item textarea:hover {
+   border: 1px solid transparent;
+   box-shadow: 0 0 3px 0  #669999;
+   color: #000;
+   }
+   .item {
+   position: relative;
+   margin: 0 0;
+   }
+   .colums {
+   display:flex;
+   justify-content:space-between;
+   flex-direction:row;
+   flex-wrap:wrap;
+   }
+   .colums div {
+   width:42%;
+   }
+   .btn-block {
+   margin-top: 20px;
+   }
+   button {
+   margin-top: 18px;
+   width: 150px;
+   height:50px;
+   padding: 8px;
+   border: none;
+   border-radius: 5px;
+   background:  #669999;
+   font-size: 16px;
+   color: #fff;
+   cursor: pointer;
+   }
+   button:hover {
+   background:  #fff;
+   .btn-shadow: 0 0 3px 90px  #669999;
+   }
+   .btn:hover p, .btn:hover i, .question:hover p, .question label:hover {
+   color:  green;
+   }
+</style>
+<div class="wrapper">
+   <div class="content container-fluid">
+      <div class="page-header">
+         <div class="row align-items-center">
+            <div class="col">
+               <h3 class="page-title">Employee</h3>
+               <ul class="breadcrumb">
+                  <li class="breadcrumb-item"><a href="{% url 'dashboard-index' %}"><i class="fa fa-home" aria-hidden="true"></i> Home</a></li>
+                  <li class="breadcrumb-item active">Employee</li>
+               </ul>
+            </div>
+            <div class="col-auto text-right float-right ml-auto">
+                <div class="dt-buttons btn-group flex-wrap mb-2 mb-md-0 mr-md-2 d-inline-flex align-items-center justify-content-end">
+                    <a href="#" class="btn btn-primary" onclick="employeeListGeneratePDF(); return false;" title="PDF"><i class="fas fa-file-pdf" style="font-size: 1.05rem;"></i></a>
+                    <a href="#" class="btn btn-primary" onclick="employeeListGenerateExcel(); return false;" title="Excel"><i class="fas fa-file-excel" style="font-size: 1.05rem;"></i></a>
+                    <a href="#" class="btn btn-primary" onclick="employeeListCopyToClipboard(); return false;" title="Copy"><i class="fas fa-copy"></i></a>
+                    <a href="#" class="btn btn-primary" onclick="employeeListPrintTable(); return false;" title="Print"><i class="fas fa-print"></i></a>
+                    <a href="{% url 'user-add' %}" class="btn btn-primary" title="New User"><i class="fas fa-plus mr-1"></i> </a>
+                </div>
+            </div>
+
+         </div>
+      </div>
+      <div class="row">
+         <div class="col-sm-12">
+            <div class="card card-table">
+               <div class="card-body">
+                     {% if customer %}
+                     <div class="table-responsive">
+                     <table id="yourDataTable" class="table table-hover table-center table.dataTable.table-sm mb-0 datatable table.sm dt-compact-cols dt-tools-minimal">
+                        <thead class="table-success">
+                           <tr>
+<!--                              <th scope="col">Sr No.</th>-->
+                              <th scope="col">Sr No.</th>
+                              <th scope="col">Staff ID</th>
+                              <th scope="col">Username</th>
+                              <th scope="col" class="col-emp-full-name col-primary-name-field">Full Name</th>
+                              <th scope="col">Phone</th>
+                              <th scope="col">Email</th>
+                              <th scope="col">Department</th>
+                              <th scope="col">Action</th>
+                              <!-- Add the Status column header -->
+                              <th scope="col">Status</th>
+                           </tr>
+                        </thead>
+                        <tbody>
+                          {% if message %}
+                              <p>{{ message }}</p>
+                          {% else %}
+                           {% for customer in customer %}
+
+                            <tr class="{% if not customer.is_active %}table-danger{% endif %}">
+                              <td>{{forloop.counter}}</td>
+                              <td>DB_{{ customer.id }}</td>
+                              <td>{{ customer.username }}</td>
+                              <td class="table-avatar col-emp-full-name col-primary-name-field">
+
+                                      <a href="{% url 'user-profile-updatepage' customer.id %}" class="avatar avatar-sm mr-2"><img class="avatar-img rounded-circle" src="{{ customer.profile.image.url }}" alt=""></a>
+                                      <a href="{% url 'user-profile-updatepage' customer.id %}" class="text-capitalize">{{ customer.first_name }} {{ customer.last_name }}</a>
+
+                              </td>
+
+                              <td>{{ customer.profile.workphone }}</td>
+                              <td>{{ customer.email }}</td>
+                              <td>{{ customer.profile.department }}</td>
+                               <td>
+    <div class="actions text-center">
+        <a href="{% url 'user-profile-update' customer.id %}" class="btn btn-sm mr-2 {% if not customer.is_active %}bg-success-light disabled{% else %}bg-success-light {% endif %}">
+            <i class="fas fa-pen"></i>
+        </a>
+
+        {% if user.is_authenticated and user|user_in_group:"SuperAdmin" %}
+            <a href="#" class="btn btn-sm {% if not customer.is_active %}bg-danger-light disabled{% else %}bg-danger-light delete-user{% endif %}" data-user-id="{{ customer.id }}">
+                <i class="fas fa-trash"></i>
+            </a>
+        {% endif %}
+    </div>
+</td>
+                               <td>
+                                   {% if user.is_authenticated and user|user_in_group:"SuperAdmin" %}
+
+    <input type="checkbox" class="toggle-status" data-user-id="{{ customer.id }}" {% if customer.is_active %}checked{% endif %}>
+
+
+
+                                   {% endif %}
+</td>
+
+
+                           </tr>
+                           {% empty %}
+                              <tr>
+                                  <td colspan="5">No Consumer found.</td>
+                              </tr>
+
+                        {% endfor %}
+                        {% endif %}
+                        </tbody>
+                     </table>
+                     </div>
+                     {% endif %}
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+</div>
+
+<!-- Update the modal content to include fields for reactivation -->
+<div class="modal fade" id="deactivateModal" tabindex="-1" role="dialog" aria-labelledby="deactivateModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deactivateModalLabel">Deactivate User</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="deactivateForm">
+                    <div class="form-group">
+                        <label for="resignReason">Resign Reason</label>
+                        <input type="text" class="form-control" id="resignReason" name="resignReason">
+                    </div>
+                    <div class="form-group">
+                        <label for="resignDate">Resign Date</label>
+                        <input type="date" class="form-control" id="resignDate" name="resignDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="resignType">Resign Type</label>
+                        <select class="form-control" id="resignType" name="resignType">
+                            <option value="fired">Fired</option>
+                            <option value="resigned">Resigned</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Deactivate User</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Update the modal content to include fields for reactivation -->
+<div class="modal fade" id="reactivateModal" tabindex="-1" role="dialog" aria-labelledby="reactivateModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reactivateModalLabel">Reactivate User</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="reactivateForm">
+                    <div class="form-group">
+                        <label for="rejoinReason">Rejoin Reason</label>
+                        <input type="text" class="form-control" id="rejoinReason" name="rejoinReason">
+                    </div>
+                    <div class="form-group">
+                        <label for="rejoinDate">Rejoin Date</label>
+                        <input type="date" class="form-control" id="rejoinDate" name="rejoinDate">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Reactivate User</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+document.querySelectorAll('.toggle-status').forEach(function(checkbox) {
+    checkbox.addEventListener('change', function(event) {
+        const userId = checkbox.getAttribute('data-user-id');
+        const isActive = checkbox.checked;
+
+        const action = isActive ? 'activate' : 'deactivate';
+
+        // Close any open modal
+        $('.modal').modal('hide');
+
+        // Show the appropriate modal based on the action
+        if (action === 'activate') {
+            $('#reactivateModal').modal('show');
+        } else if (action === 'deactivate') {
+            $('#deactivateModal').modal('show');
+        }
+
+        // Handle form submission based on the action
+        $('form').unbind().submit(function(submitEvent) {
+            submitEvent.preventDefault();
+
+            // Extract form data based on the action
+            let formData = {};
+            if (action === 'activate') {
+                formData = {
+                    rejoinReason: $('#rejoinReason').val(),
+                    rejoinDate: $('#rejoinDate').val(),
+                };
+            } else if (action === 'deactivate') {
+                formData = {
+                    resignReason: $('#resignReason').val(),
+                    resignDate: $('#resignDate').val(),
+                    resignType: $('#resignType').val(),
+                };
+            }
+
+            if (confirm(`Are you sure you want to ${action} this user?`)) {
+                fetch(`/toggle-status/${userId}/${action}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData),
+                })
+                .then(response => {
+                    if (response.status === 200) {
+                        // Update the checkbox state based on the new status
+                        checkbox.checked = isActive;
+
+                        // Add or remove a class to apply the styles
+                        if (isActive) {
+                            checkbox.classList.remove('unchecked');
+                        } else {
+                            checkbox.classList.add('unchecked');
+                        }
+
+                        // Hide the modal after successful submission
+                        $('.modal').modal('hide');
+
+                        // Refresh the page after successful submission
+                        location.reload();
+
+                    } else {
+                        alert(`Failed to ${action} user.`);
+
+                         // Refresh the page after successful submission
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert(`Failed to ${action} user.`);
+                });
+            }
+        });
+    });
+});
+</script>
+
+<script>
+    document.querySelectorAll('.delete-user').forEach(function(button) {
+        button.addEventListener('click', function(event) {
+            event.preventDefault();
+            const userId = button.getAttribute('data-user-id');
+
+            if (confirm('Are you sure you want to delete this user?')) {
+                fetch(`/delete-user/${userId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    },
+                })
+                .then(response => {
+                    if (response.status === 204) {
+                        const userRow = button.closest('tr');
+                        userRow.remove();
+                    } else {
+                        alert('Failed to delete user.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to delete user.');
+                });
+            }
+        });
+    });
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof window.jQuery === 'undefined' || typeof window.jQuery.fn.dataTable === 'undefined') {
+        return;
+    }
+    window.jQuery(function ($) {
+        if (!$.fn.dataTable.isDataTable('#yourDataTable')) {
+            return;
+        }
+        var dt = $('#yourDataTable').DataTable();
+        var renumber = function () {
+            dt.column(0, { search: 'applied', order: 'applied' }).nodes().each(function (cell, i) {
+                cell.innerHTML = i + 1;
+            });
+        };
+        dt.on('order.dt search.dt draw.dt', renumber);
+        renumber();
+    });
+});
+</script>
+
+<script>window.LIST_PAGE_EXPORT_LOGO_PATH = "{% static 'images/db_logo_200.png' %}";</script>
+<script src="{% static 'js/list_page_export.js' %}"></script>
+<script>
+    ListPageExport.register({
+        apiPrefix: 'employeeList',
+        pdfFilename: 'employee_list.pdf',
+        excelFilename: 'employee_list.xlsx',
+        excelSheetName: 'EmployeeList',
+        printDocumentTitle: 'Employee List',
+        pdfCaption: 'Employee List',
+        pdfMergeNamePhoneColumns: true
+    });
+</script>
+
+{% endblock %}

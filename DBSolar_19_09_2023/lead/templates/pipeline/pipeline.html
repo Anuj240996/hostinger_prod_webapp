@@ -1,0 +1,507 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load humanize indian_numbers %}
+{% block title %}Pipeline - Solar CRM{% endblock %}
+{% block extra_css %}
+<style>
+    .kanban-board {
+        display: flex;
+        gap: 20px;
+        overflow-x: auto;
+        padding: 20px 0;
+        min-height: calc(100vh - 200px);
+    }
+
+    .kanban-column {
+        min-width: 300px;
+        width: 300px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 15px;
+    }
+
+    .column-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid;
+    }
+
+    .column-header.new-leads { border-color: #0d6efd; }
+    .column-header.qualified { border-color: #198754; }
+    .column-header.survey-done { border-color: #ffc107; }
+    .column-header.quote-sent { border-color: #0dcaf0; }
+    .column-header.negotiation { border-color: #fd7e14; }
+    .column-header.won { border-color: #198754; }
+    .column-header.lost { border-color: #dc3545; }
+
+    .column-title {
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .column-count {
+        background: white;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .kanban-cards {
+        min-height: 500px;
+    }
+
+    .kanban-card {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        cursor: move;
+        transition: all 0.3s;
+        border-left: 4px solid transparent;
+    }
+
+    .kanban-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .kanban-card.new-leads { border-left-color: #0d6efd; }
+    .kanban-card.qualified { border-left-color: #198754; }
+    .kanban-card.survey-done { border-left-color: #ffc107; }
+    .kanban-card.quote-sent { border-left-color: #0dcaf0; }
+    .kanban-card.negotiation { border-left-color: #fd7e14; }
+    .kanban-card.won { border-left-color: #198754; }
+    .kanban-card.lost { border-left-color: #dc3545; }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 10px;
+    }
+
+    .card-title {
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .card-subtitle {
+        font-size: 12px;
+        color: #6c757d;
+    }
+
+    .card-badge {
+        padding: 3px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .card-badge.high { background: #6f42c1; color: white; }
+    .card-badge.medium { background: #fd7e14; color: white; }
+    .card-badge.low { background: #6c757d; color: white; }
+
+    .card-details {
+        margin: 10px 0;
+        font-size: 13px;
+    }
+
+    .card-details i {
+        width: 18px;
+        color: #6c757d;
+    }
+
+    .card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #eee;
+        font-size: 12px;
+    }
+
+    .drag-over {
+        background: rgba(13, 110, 253, 0.05);
+        border: 2px dashed #0d6efd;
+    }
+
+    .pipeline-filters {
+        background: white;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pipeline-page">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Sales Pipeline</h2>
+        <div class="btn-group">
+            <button class="btn btn-outline-primary" onclick="refreshPipeline()">
+                <i class="fas fa-sync-alt me-2"></i>Refresh
+            </button>
+            <button class="btn btn-outline-secondary" onclick="exportPipeline()">
+                <i class="fas fa-download me-2"></i>Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Pipeline Filters -->
+    <div class="pipeline-filters">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Sales Person</label>
+                <select class="form-select" id="filterAssigned">
+                    <option value="">All</option>
+                    {% for user in sales_users %}
+                    <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Lead Source</label>
+                <select class="form-select" id="filterSource">
+                    <option value="">All</option>
+                    {% for source in lead_sources %}
+                    <option value="{{ source.id }}">{{ source.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Date Range</label>
+                <select class="form-select" id="filterDate">
+                    <option value="">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-primary w-100" onclick="applyFilters()">
+                    <i class="fas fa-filter me-2"></i>Apply Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kanban Board -->
+    <div class="kanban-board" id="kanbanBoard">
+        <!-- New Leads Column -->
+        <div class="kanban-column" data-stage="new">
+            <div class="column-header new-leads">
+                <span class="column-title">🆕 New Leads</span>
+                <span class="column-count">{{ pipeline_counts.new|default:0 }}</span>
+            </div>
+            <div class="kanban-cards" id="column-new" ondrop="drop(event)" ondragover="allowDrop(event)">
+                {% for lead in pipeline_data.new %}
+                <div class="kanban-card new-leads" draggable="true" ondragstart="drag(event)" data-lead-id="{{ lead.id }}" data-stage="{{ lead.stage }}">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">{{ lead.name }}</div>
+                            <div class="card-subtitle">{{ lead.phone }}</div>
+                        </div>
+                        <span class="card-badge {{ lead.score }}">{{ lead.get_score_display }}</span>
+                    </div>
+                    <div class="card-details">
+                        <div><i class="fas fa-rupee-sign me-2"></i>{{ lead.electricity_bill|default:'0'|indian_currency }}/month</div>
+                        <div><i class="fas fa-map-marker-alt me-2"></i>{{ lead.city }}</div>
+                    </div>
+                    <div class="card-footer">
+                        <span><i class="fas fa-user me-1"></i>{{ lead.assigned_to.get_full_name|default:'Unassigned' }}</span>
+                        <span><i class="fas fa-calendar me-1"></i>{{ lead.estimated_value|default:'0'|indian_currency }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-muted text-center py-4">No leads</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Qualified Column -->
+        <div class="kanban-column" data-stage="qualified">
+            <div class="column-header qualified">
+                <span class="column-title">✓ Qualified</span>
+                <span class="column-count">{{ pipeline_counts.qualified|default:0 }}</span>
+            </div>
+            <div class="kanban-cards" id="column-qualified" ondrop="drop(event)" ondragover="allowDrop(event)">
+                {% for lead in pipeline_data.qualified %}
+                <div class="kanban-card qualified" draggable="true" ondragstart="drag(event)" data-lead-id="{{ lead.id }}" data-stage="{{ lead.stage }}">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">{{ lead.name }}</div>
+                            <div class="card-subtitle">{{ lead.phone }}</div>
+                        </div>
+                        <span class="card-badge {{ lead.score }}">{{ lead.get_score_display }}</span>
+                    </div>
+                    <div class="card-details">
+                        <div><i class="fas fa-rupee-sign me-2"></i>{{ lead.electricity_bill|default:'0'|indian_currency }}/month</div>
+                        <div><i class="fas fa-map-marker-alt me-2"></i>{{ lead.city }}</div>
+                    </div>
+                    <div class="card-footer">
+                        <span><i class="fas fa-user me-1"></i>{{ lead.assigned_to.get_full_name|default:'Unassigned' }}</span>
+                        <span><i class="fas fa-calendar me-1"></i>{{ lead.estimated_value|default:'0'|indian_currency }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-muted text-center py-4">No leads</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Survey Done Column -->
+        <div class="kanban-column" data-stage="survey">
+            <div class="column-header survey-done">
+                <span class="column-title">🔍 Survey Done</span>
+                <span class="column-count">{{ pipeline_counts.survey|default:0 }}</span>
+            </div>
+            <div class="kanban-cards" id="column-survey" ondrop="drop(event)" ondragover="allowDrop(event)">
+                {% for lead in pipeline_data.survey %}
+                <div class="kanban-card survey-done" draggable="true" ondragstart="drag(event)" data-lead-id="{{ lead.id }}" data-stage="{{ lead.stage }}">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">{{ lead.name }}</div>
+                            <div class="card-subtitle">{{ lead.phone }}</div>
+                        </div>
+                        <span class="card-badge {{ lead.score }}">{{ lead.get_score_display }}</span>
+                    </div>
+                    <div class="card-details">
+                        <div><i class="fas fa-rupee-sign me-2"></i>{{ lead.electricity_bill|default:'0'|indian_currency }}/month</div>
+                        <div><i class="fas fa-map-marker-alt me-2"></i>{{ lead.city }}</div>
+                    </div>
+                    <div class="card-footer">
+                        <span><i class="fas fa-user me-1"></i>{{ lead.assigned_to.get_full_name|default:'Unassigned' }}</span>
+                        <span><i class="fas fa-calendar me-1"></i>{{ lead.estimated_value|default:'0'|indian_currency }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-muted text-center py-4">No leads</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Quote Sent Column -->
+        <div class="kanban-column" data-stage="quote">
+            <div class="column-header quote-sent">
+                <span class="column-title">📄 Quote Sent</span>
+                <span class="column-count">{{ pipeline_counts.quote|default:0 }}</span>
+            </div>
+            <div class="kanban-cards" id="column-quote" ondrop="drop(event)" ondragover="allowDrop(event)">
+                {% for lead in pipeline_data.quote %}
+                <div class="kanban-card quote-sent" draggable="true" ondragstart="drag(event)" data-lead-id="{{ lead.id }}" data-stage="{{ lead.stage }}">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">{{ lead.name }}</div>
+                            <div class="card-subtitle">{{ lead.phone }}</div>
+                        </div>
+                        <span class="card-badge {{ lead.score }}">{{ lead.get_score_display }}</span>
+                    </div>
+                    <div class="card-details">
+                        <div><i class="fas fa-rupee-sign me-2"></i>{{ lead.electricity_bill|default:'0'|indian_currency }}/month</div>
+                        <div><i class="fas fa-map-marker-alt me-2"></i>{{ lead.city }}</div>
+                    </div>
+                    <div class="card-footer">
+                        <span><i class="fas fa-user me-1"></i>{{ lead.assigned_to.get_full_name|default:'Unassigned' }}</span>
+                        <span><i class="fas fa-calendar me-1"></i>{{ lead.estimated_value|default:'0'|indian_currency }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-muted text-center py-4">No leads</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Negotiation Column -->
+        <div class="kanban-column" data-stage="negotiation">
+            <div class="column-header negotiation">
+                <span class="column-title">🤝 Negotiation</span>
+                <span class="column-count">{{ pipeline_counts.negotiation|default:0 }}</span>
+            </div>
+            <div class="kanban-cards" id="column-negotiation" ondrop="drop(event)" ondragover="allowDrop(event)">
+                {% for lead in pipeline_data.negotiation %}
+                <div class="kanban-card negotiation" draggable="true" ondragstart="drag(event)" data-lead-id="{{ lead.id }}" data-stage="{{ lead.stage }}">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">{{ lead.name }}</div>
+                            <div class="card-subtitle">{{ lead.phone }}</div>
+                        </div>
+                        <span class="card-badge {{ lead.score }}">{{ lead.get_score_display }}</span>
+                    </div>
+                    <div class="card-details">
+                        <div><i class="fas fa-rupee-sign me-2"></i>{{ lead.electricity_bill|default:'0'|indian_currency }}/month</div>
+                        <div><i class="fas fa-map-marker-alt me-2"></i>{{ lead.city }}</div>
+                    </div>
+                    <div class="card-footer">
+                        <span><i class="fas fa-user me-1"></i>{{ lead.assigned_to.get_full_name|default:'Unassigned' }}</span>
+                        <span><i class="fas fa-calendar me-1"></i>{{ lead.estimated_value|default:'0'|indian_currency }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-muted text-center py-4">No leads</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Won Column -->
+        <div class="kanban-column" data-stage="won">
+            <div class="column-header won">
+                <span class="column-title">🏆 Won</span>
+                <span class="column-count">{{ pipeline_counts.won|default:0 }}</span>
+            </div>
+            <div class="kanban-cards" id="column-won" ondrop="drop(event)" ondragover="allowDrop(event)">
+                {% for lead in pipeline_data.won %}
+                <div class="kanban-card won" draggable="true" ondragstart="drag(event)" data-lead-id="{{ lead.id }}" data-stage="{{ lead.stage }}">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">{{ lead.name }}</div>
+                            <div class="card-subtitle">{{ lead.phone }}</div>
+                        </div>
+                        <span class="card-badge {{ lead.score }}">{{ lead.get_score_display }}</span>
+                    </div>
+                    <div class="card-details">
+                        <div><i class="fas fa-rupee-sign me-2"></i>{{ lead.electricity_bill|default:'0'|indian_currency }}/month</div>
+                        <div><i class="fas fa-map-marker-alt me-2"></i>{{ lead.city }}</div>
+                    </div>
+                    <div class="card-footer">
+                        <span><i class="fas fa-user me-1"></i>{{ lead.assigned_to.get_full_name|default:'Unassigned' }}</span>
+                        <span><i class="fas fa-calendar me-1"></i>{{ lead.estimated_value|default:'0'|indian_currency }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-muted text-center py-4">No leads</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Lost Column -->
+        <div class="kanban-column" data-stage="lost">
+            <div class="column-header lost">
+                <span class="column-title">❌ Lost</span>
+                <span class="column-count">{{ pipeline_counts.lost|default:0 }}</span>
+            </div>
+            <div class="kanban-cards" id="column-lost" ondrop="drop(event)" ondragover="allowDrop(event)">
+                {% for lead in pipeline_data.lost %}
+                <div class="kanban-card lost" draggable="true" ondragstart="drag(event)" data-lead-id="{{ lead.id }}" data-stage="{{ lead.stage }}">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">{{ lead.name }}</div>
+                            <div class="card-subtitle">{{ lead.phone }}</div>
+                        </div>
+                        <span class="card-badge {{ lead.score }}">{{ lead.get_score_display }}</span>
+                    </div>
+                    <div class="card-details">
+                        <div><i class="fas fa-rupee-sign me-2"></i>{{ lead.electricity_bill|default:'0'|indian_currency }}/month</div>
+                        <div><i class="fas fa-map-marker-alt me-2"></i>{{ lead.city }}</div>
+                        <div><small class="text-danger">Lost: {{ lead.lost_reason }}</small></div>
+                    </div>
+                    <div class="card-footer">
+                        <span><i class="fas fa-user me-1"></i>{{ lead.assigned_to.get_full_name|default:'Unassigned' }}</span>
+                        <span><i class="fas fa-calendar me-1"></i>{{ lead.lost_at|date:'d M' }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-muted text-center py-4">No leads</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function allowDrop(ev) {
+        ev.preventDefault();
+        ev.target.classList.add('drag-over');
+    }
+
+    function drag(ev) {
+        ev.dataTransfer.setData("text", ev.target.getAttribute('data-lead-id'));
+        ev.dataTransfer.setData("stage", ev.target.getAttribute('data-stage'));
+    }
+
+    function drop(ev) {
+        ev.preventDefault();
+        ev.target.classList.remove('drag-over');
+
+        var leadId = ev.dataTransfer.getData("text");
+        var oldStage = ev.dataTransfer.getData("stage");
+        var newStage = ev.target.closest('.kanban-column').getAttribute('data-stage');
+
+        if (oldStage === newStage) return;
+
+        // Update lead stage via AJAX
+        fetch(`/new-lead/leads/${leadId}/update-stage/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: `stage=${newStage}`
+        })
+        .then(response => {
+            if (response.ok) {
+                // Move the card to new column
+                var card = document.querySelector(`[data-lead-id="${leadId}"]`);
+                var newColumn = document.getElementById(`column-${newStage}`);
+                if (newColumn) {
+                    card.setAttribute('data-stage', newStage);
+                    card.className = card.className.replace(oldStage, newStage);
+                    newColumn.appendChild(card);
+
+                    // Update column counts
+                    updateColumnCounts();
+
+                    // Show success message
+                    showNotification('Success', 'Lead stage updated', 'success');
+                }
+            } else {
+                showNotification('Error', 'Failed to update stage', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error', 'Failed to update stage', 'error');
+        });
+    }
+
+    function updateColumnCounts() {
+        document.querySelectorAll('.kanban-column').forEach(column => {
+            var stage = column.getAttribute('data-stage');
+            var count = column.querySelectorAll('.kanban-card').length;
+            column.querySelector('.column-count').textContent = count;
+        });
+    }
+
+    function applyFilters() {
+        var assigned = document.getElementById('filterAssigned').value;
+        var source = document.getElementById('filterSource').value;
+        var date = document.getElementById('filterDate').value;
+
+        // Reload page with filters
+        window.location.href = `?assigned_to=${assigned}&source=${source}&date_range=${date}`;
+    }
+
+    function refreshPipeline() {
+        location.reload();
+    }
+
+    function exportPipeline() {
+        window.location.href = '{% url "pipeline_export" %}';
+    }
+
+    // Remove drag-over class when leaving
+    document.querySelectorAll('.kanban-cards').forEach(column => {
+        column.addEventListener('dragleave', function(e) {
+            this.classList.remove('drag-over');
+        });
+    });
+</script>
+{% endblock %}

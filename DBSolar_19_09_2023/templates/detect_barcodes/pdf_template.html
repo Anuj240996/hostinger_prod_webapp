@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+   <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Selected Checkbox Values</title>
+      <style>
+         /*
+          * Top margin reserves space for letterhead. Logo + company lines are drawn on every page in Python (PyMuPDF).
+          */
+         @page {
+            size: a4 portrait;
+            margin-top: 112pt;
+            margin-left: 12pt;
+            margin-right: 12pt;
+            margin-bottom: 18pt;
+         }
+         .row,
+         .container-fluid,
+         .card-body,
+         .table-responsive,
+         .col-md-12,
+         .mx-auto {
+            display: block !important;
+            float: none !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+         }
+         body {
+         font-family: Arial, sans-serif;
+         font-size: 12px;
+         margin: 0;
+         padding: 0;
+         }
+         .table-container {
+         margin: 0 auto;
+         width: 100%;
+         }
+         .table-heading {
+         text-align: center;
+        margin: 8px 0 6px 0;
+         padding: 4px 0 2px 0;
+         font-size: 13px;
+         font-weight: bold;
+         }
+         table {
+         width: 100%;
+         border-collapse: collapse;
+         }
+         .table {
+         width: 100%;
+         border: 0;
+         }
+         th, td {
+         border: 0.5px;
+         padding: 3px;
+         text-align: center;
+         }
+         th {
+         background-color: #f2f2f2;
+         }
+         .compartment {
+         display: block !important;
+         flex: none !important;
+         overflow: visible !important;
+         border: 1px solid #ccc;
+         padding: 15px;
+         }
+         /* Barcode cell images */
+         table.table img,
+         table tbody img {
+         width: 80px;
+         height: 50px;
+         }
+         .table-separator {
+         border: none;
+         height: 1px;
+         background-color: red;
+         margin: 20px 0;
+         }
+      </style>
+   </head>
+   <body>
+      <div class="container-fluid">
+         <div class="card-body">
+            <div class="row mt-1">
+               <div class="compartment">
+                  <table class="table">
+                     <tr>
+                        <td style="text-align: left; padding: 1 5 0 2px; margin-left: 5px;">
+                            <b>Consumer :</b> {{ items.0.company|title }}
+                            <br>
+                            <b>Address :</b> {{ customer.Address|title }}
+                            <br>
+                            <b>City :</b> {{ customer.City|title }}
+                        </td>
+                        <td style="text-align: left; padding: 0 5 0 2px; margin-left: 5px;">
+                           <b>Invoice Number :</b> {{ invoice_number }}
+                           <br>
+                           <b>Date :</b> {{ date1 }}
+                           <!--   <b1>Date: {{ date }} </b1><br>-->
+                        </td>
+                     </tr>
+                  </table>
+               </div>
+               {% if solar_items %}
+               <div class="col-md-12 mx-auto table-container">
+                  <div class="table-responsive">
+                     <!-- Section title must not use <caption> here (invalid unless direct child of <table>) — xhtml2pdf drew it above letterhead -->
+                     <h3 class="table-heading">Solar Panel Items</h3>
+                     <div class="compartment">
+                        <table class="table">
+                           <tr>
+                              <td style="text-align: left; padding: 1 5 0 2px; margin-left: 5px;">
+                                 <b>Make :</b> {{ solar_items1.0.company_name }}
+                                 <br>
+                                 <b>Wattage :</b> {{ unique_wattages|join:"," }}
+                                 <br>
+
+                              </td>
+                              <td style="text-align: left; padding: 1 5 0 2px; margin-left: 5px;">
+                                   <b>Total Quantity :</b> {{ solar_panel_total_quantity }}<br>
+                                 {% for item in solar_panel_quantity_by_wattage %}
+                                 <b> Quantity for Model Type {{ item.wattage }} :</b> {{ item.total_quantity }}
+                                 <br>
+                                 {% endfor %}
+                              </td>
+                           </tr>
+                        </table>
+                     </div>
+                     <br>
+                     <table repeat="1">
+                        <thead>
+                          {% if selected_no == "barcode" %}
+                            <tr>
+                              <th>Serial No</th>
+                              <th>Barcode No</th>
+                              <th>Panel Barcode</th>
+                              <th>Serial No</th>
+                              <th>Barcode No</th>
+                               <th>Panel Barcode</th>
+                            </tr>
+                          {% else %}
+                              <tr style="width: 100%;">
+                              <th>Serial No</th>
+                              <th>Barcode No</th>
+                                 <th></th>
+                              <th>Serial No</th>
+                              <th>Barcode No</th>
+                                 <th></th>
+                            </tr>
+                          {% endif %}
+
+
+                        </thead>
+                        <tbody>
+                           {% for pair in solar_items %}
+                             {% if selected_no == "barcode" %}
+                                 <tr>
+                                    {% for item_data in pair %}
+                                      {% if item_data.item %}
+                                          <td>{{ item_data.serial_number }}</td>
+                                          <td>{{ item_data.item.barcode_data }}</td>
+      <!--                                    {% if selected_no == "barcode" %}-->
+                                             <td>
+                                                 {% if item_data.item.barcode_type == 'CODE39' %}
+                                                    <img src="{{ item_data.item.image.path }}" alt="Barcode">
+                                                 {% elif item_data.item.barcode_path %}
+                                                     {% if item_data.item.barcode_path.url %}
+                                                         <img src="{{ item_data.item.barcode_path.path }}" alt="Barcode">
+                                                     {% else %}
+                                                         <p>No barcode image</p>
+                                                     {% endif %}
+                                                 {% else %}
+                                                     <p>No barcode information</p>
+                                                 {% endif %}
+                                             </td>
+
+
+
+      <!--                                    {% endif %}-->
+                                      {% else %}
+                                         <td colspan="3"></td>
+      <!--                              <td></td>-->
+      <!--                              <td></td>-->
+                                      {% endif %}
+                                    {% endfor %}
+                                 </tr>
+                             {% else %}
+                                 <tr>
+                                    {% for item_data in pair %}
+                                      {% if item_data.item %}
+                                          <td>{{ item_data.serial_number }}</td>
+                                          <td>{{ item_data.item.barcode_data }}</td>
+                                         <td></td>
+                                      {% else %}
+                                         <td colspan="3"></td>
+      <!--                              <td></td>-->
+      <!--                              <td></td>-->
+                                      {% endif %}
+                                    {% endfor %}
+                                 </tr>
+                             {% endif %}
+                           {% endfor %}
+                        </tbody>
+                     </table>
+                  </div>
+               </div>
+               <hr class="table-separator">
+               {% endif %}
+               {% if inverter_items %}
+               <div class="col-md-12 mx-auto table-container">
+                  <div class="table-responsive">
+                     <h3 class="table-heading">Inverter Items</h3>
+                      <div class="compartment">
+                        <table class="table">
+                           <tr>
+                              <td style="text-align: left; padding: 1 5 0 2px; margin-left: 5px;">
+                                 <b>Make :</b> {{ inverter_items.0.company_name }}
+                                 <br>
+                                 <b>Wattage :</b> {{ inverter_wattages|join:"," }}
+                              </td>
+                              <td style="text-align: left; padding: 1 5 0 2px; margin-left: 5px;">
+                                 <b>Total Quantity :</b> {{ inverter_panel_total_quantity }}
+                                 <br>
+                                 {% for item in inverter_panel_quantity_by_wattage %}
+                                 <b>Quantity for Model Type {{ item.wattage }} :</b> {{ item.total_quantity }}
+                                 <br>
+                                 {% endfor %}
+                              </td>
+                           </tr>
+                        </table>
+                     </div>
+                     <br>
+                     {% if inverter_panel_total_quantity == 1 %}
+                     <table repeat="1">
+                        <thead>
+                          {% if selected_no == "barcode" %}
+                              <tr>
+                                 <th>Serial No</th>
+                                 <th>Barcode No</th>
+                                 <th>Inverter Barcode</th>
+                              </tr>
+                          {% else %}
+                              <tr>
+                                 <th>Serial No</th>
+                                 <th>Barcode No</th>
+                                 <th></th>
+                              </tr>
+
+                          {% endif %}
+                        </thead>
+                        <tbody>
+                           {% for item in inverter_items %}
+                             {% if selected_no == "barcode" %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ item.barcode_data }}</td>
+
+                                      <td>
+                                                 {% if item.barcode_type == 'CODE39' %}
+                                                    <img src="{{ item.image.path }}" alt="Barcode">
+                                                 {% elif item.barcode_path %}
+                                                     {% if item.barcode_path.url %}
+                                                         <img src="{{ item.barcode_path.path }}" alt="Barcode">
+                                                     {% else %}
+                                                         <p>No barcode image</p>
+                                                     {% endif %}
+                                                 {% else %}
+                                                     <p>No barcode information</p>
+                                                 {% endif %}
+                                             </td>
+
+                                 </tr>
+                             {% else %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ item.barcode_data }}</td>
+                                    <td></td>
+                                 </tr>
+                             {% endif %}
+                           {% endfor %}
+                        </tbody>
+                     </table>
+                     {% elif inverter_panel_total_quantity > 1 %}
+                     <table repeat="1">
+                        <thead>
+                           {% if selected_no == "barcode" %}
+                           <tr>
+                              <th>Serial No</th>
+                              <th>Barcode No</th>
+                              <th>Panel Barcode</th>
+                              <th>Serial No</th>
+                              <th>Barcode No</th>
+                              <th>Panel Barcode</th>
+                           </tr>
+
+                           {% else %}
+                            <tr>
+                              <th>Serial No</th>
+                              <th>Barcode No</th>
+                              <th></th>
+                              <th>Serial No</th>
+                              <th>Barcode No</th>
+                              <th></th>
+                           </tr>
+                           {% endif %}
+                        </thead>
+                        <tbody>
+                           {% for pair in inverter_items1 %}
+                              {% if selected_no == "barcode" %}
+                                <tr>
+                                    {% for item_data in pair %}
+                                    {% if item_data.item %}
+                                    <td>{{ item_data.serial_number }}</td>
+                                    <td>{{ item_data.item.barcode_data }}</td>
+
+                                      <td>
+                                                 {% if item_data.item.barcode_type == 'CODE39' %}
+                                                    <img src="{{ item_data.item.image.path }}" alt="Barcode">
+                                                 {% elif item_data.item.barcode_path %}
+                                                     {% if item_data.item.barcode_path.url %}
+                                                         <img src="{{ item_data.item.barcode_path.path }}" alt="Barcode">
+                                                     {% else %}
+                                                         <p>No barcode image</p>
+                                                     {% endif %}
+                                                 {% else %}
+                                                     <p>No barcode information</p>
+                                                 {% endif %}
+                                             </td>
+
+                                    {% else %}
+                                    <td colspan="3"></td>
+      <!--                              <td></td>-->
+      <!--                              <td></td>-->
+                                    {% endif %}
+                                    {% endfor %}
+                                 </tr>
+                              {% else %}
+                                  <tr>
+                                       {% for item_data in pair %}
+                                       {% if item_data.item %}
+                                       <td>{{ item_data.serial_number }}</td>
+                                       <td>{{ item_data.item.barcode_data }}</td>
+                                       <td></td>
+                                       {% else %}
+                                       <td colspan="3"></td>
+         <!--                              <td></td>-->
+         <!--                              <td></td>-->
+                                       {% endif %}
+                                       {% endfor %}
+                                    </tr>
+                              {% endif %}
+
+                           {% endfor %}
+                        </tbody>
+                     </table>
+                     {% endif %}
+
+                  </div>
+               </div>
+               <hr class="table-separator">
+               {% endif %}
+               <!-- ... Rest of your code ... -->
+            </div>
+         </div>
+      </div>
+   </body>
+</html>
+
+
