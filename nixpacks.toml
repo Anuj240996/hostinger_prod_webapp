@@ -1,4 +1,5 @@
 [phases.setup]
-nixPkgs = ["libxml2", "libxslt", "gcc", "zlib"]
+nixPkgs = ["python310", "libxml2", "libxslt", "gcc", "zlib"]
 
-
+[variables]
+PYTHON_VERSION = "3.10"
