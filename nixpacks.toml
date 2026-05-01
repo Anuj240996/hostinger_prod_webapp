@@ -1,5 +1,16 @@
 [phases.setup]
-nixPkgs = ["python310", "libxml2", "libxslt", "gcc", "zlib"]
+nixPkgs = [
+  "python310",
+  "libxml2",
+  "libxslt",
+  "gcc",
+  "zlib",
+  "freetype",
+  "libjpeg",
+  "tesseract"
+]
 
-[variables]
-PYTHON_VERSION = "3.10"
+[phases.install]
+cmds = [
+  "pip install --upgrade pip setuptools wheel"
+]
